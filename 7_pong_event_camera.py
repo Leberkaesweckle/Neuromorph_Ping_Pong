@@ -14,19 +14,38 @@ RED = (255, 0, 0)
 
 # Basic parameters of the screen
 WIDTH, HEIGHT = 900, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT), vsync=True)
+CONTROL_AREA_WIDTH = 200  # Additional area for control elements
+TOTAL_WIDTH = WIDTH + CONTROL_AREA_WIDTH  # Gesamtbreite inklusive Steuerungsbereich
+screen = pygame.display.set_mode((TOTAL_WIDTH, HEIGHT), vsync=True)
 pygame.display.set_caption("Pong")
 
 clock = pygame.time.Clock() 
 FPS = 60
+
+paddle_height = 100
 ball_blinking = False
 blinking_frequency_ball = 10
+edge_cubes_blinking = True
+blinking_frequency_edge_cubes = 10
 
-# Striker class
 
-def get_camera_position():
-	return 30
-
+######################################################
+# Camera interface
+######################################################
+#############################################################################################################
+class CameraObserver:
+	def __init__(self) -> None:
+		pass
+		
+	def get_paddle_1_target_position(self):
+		return 0 # get paddle target y position, as fraction 0 is top and 1 is buttom of screen
+	
+	def get_paddle_2_target_position(self):
+		return 1 # get paddle target y position, as fraction 0 is top and 1 is buttom of screen
+	
+	def get_ball_position(self):
+		return # get ball x and y position as fraction of screen size (0 to 1)
+#############################################################################################################
 
 ######################################################
 # Game objects
@@ -63,8 +82,8 @@ class Striker:
 		self.playerRect = (self.posx, self.posy, self.width, self.height)
 
 	def update_absolute_position(self, yPosFract):
-		self.posy = int(yPosFract * HEIGHT) 
-		self.posy = np.clip(self.posy, 0, 1)
+		self.posy = yPosFract * (HEIGHT - self.height)
+		self.posy = int(np.clip(self.posy, 0, HEIGHT - self.height))
 
 		# Updating the rect with the new values
 		self.playerRect = (self.posx, self.posy, self.width, self.height)
@@ -92,7 +111,7 @@ class Ball:
 		self.yFac = -1
 		self.ball = pygame.draw.circle(screen, self.color, (self.posx, self.posy), self.radius)
 		self.firstTime = 1
-		self.blink_frequency = blink_frequency  # Controls the blinking speed
+		self.blink_frequency = FPS / blink_frequency  # Controls the blinking speed
 		self.blink_counter = 0
 		self.is_visible = True  # Controls the visibility of the ball
 
@@ -141,6 +160,33 @@ class Ball:
 
 	def getRect(self):
 		return self.ball
+	
+class BlinkerCube:
+	def __init__(self, posx, posy, side_length, color, blink_frequency) -> None:
+		self.posx = posx
+		self.posy = posy
+		self.side_length = side_length
+		self.color = color
+		self.blinker_rect = pygame.Rect(posx, posy, side_length, side_length)
+		self.firstTime = 1
+		self.blink_frequency = FPS / blink_frequency  # Controls the blinking speed
+		self.blink_counter = 0
+		self.is_visible = True  # Controls the visibility of the element
+		pass
+
+	def display(self):
+		# Only draw the element if it's visible
+		if self.is_visible:
+			self.ball = pygame.draw.rect(screen, self.color, self.blinker_rect)
+	
+	def update_blink(self):
+		# Increment the blink counter
+		self.blink_counter += 1
+
+		# Toggle visibility based on the frequency
+		if self.blink_counter >= self.blink_frequency:
+			self.is_visible = not self.is_visible
+			self.blink_counter = 0
 
 ######################################################
 # UI elements
@@ -208,22 +254,23 @@ class ToggleSwitch:
 ######################################################
 # Initializing the game
 ######################################################	
-
-# Basic parameters of the screen
-WIDTH, HEIGHT = 900, 600
-CONTROL_AREA_WIDTH = 200  # Zusätzlicher Bereich für Steuerungselemente
-TOTAL_WIDTH = WIDTH + CONTROL_AREA_WIDTH  # Gesamtbreite inklusive Steuerungsbereich
-screen = pygame.display.set_mode((TOTAL_WIDTH, HEIGHT))
-pygame.display.set_caption("Pong")
-
 # Game Manager
 def main():
 	running = True
 
+	#############################################################################################################
+	camera = CameraObserver()
+	#############################################################################################################
+
 	# Defining the objects
-	player1 = Striker(20, 0, 10, 100, 10, GREEN)
-	player2 = Striker(WIDTH-30, 0, 10, 100, 8, GREEN)
+	blinking_cube_edge_length = 20
+	player1 = Striker(20, 0, 10, paddle_height, 10, GREEN)
+	player2 = Striker(WIDTH-30, 0, 10, paddle_height, 8, GREEN)
 	ball = Ball(posx=WIDTH//2, posy=HEIGHT//2, radius=7, speed=7, color=WHITE, blink_frequency=blinking_frequency_ball)
+	blinking_cube_left_top = BlinkerCube(posx=0, posy=0, side_length=blinking_cube_edge_length, color=WHITE, blink_frequency=blinking_frequency_edge_cubes)
+	blinking_cube_left_buttom = BlinkerCube(posx=0, posy=HEIGHT-blinking_cube_edge_length, side_length=blinking_cube_edge_length, color=WHITE, blink_frequency=blinking_frequency_edge_cubes)
+	blinking_cube_right_top = BlinkerCube(posx=WIDTH-blinking_cube_edge_length, posy=0, side_length=blinking_cube_edge_length, color=WHITE, blink_frequency=blinking_frequency_edge_cubes)
+	blinking_cube_right_buttom = BlinkerCube(posx=WIDTH-blinking_cube_edge_length, posy=HEIGHT-blinking_cube_edge_length, side_length=blinking_cube_edge_length, color=WHITE, blink_frequency=blinking_frequency_edge_cubes)
 
 	# Buttons innerhalb des Steuerungsbereichs positionieren
 	toggleSwitchSingleplayer = ToggleSwitch(WIDTH + 50, HEIGHT-150, 100, 50, is_on=True, text_on='Singleplayer', text_off='Multiplayer')
@@ -247,6 +294,11 @@ def main():
 		# blinking of objects
 		if ball_blinking:
 			ball.update_blink()
+		if edge_cubes_blinking:
+			blinking_cube_left_top.update_blink()
+			blinking_cube_left_buttom.update_blink()
+			blinking_cube_right_top.update_blink()
+			blinking_cube_right_buttom.update_blink()
 
 		# Event handling
 		for event in pygame.event.get():
@@ -284,7 +336,7 @@ def main():
 
 			# Player 1
 			if toggleSwitchCameraControl.is_on:
-				camera_player_1_pos = get_camera_position() #fraction between 0 and 1
+				camera_player_1_pos = camera.get_paddle_1_target_position() #fraction between 0 and 1
 				player1.update_absolute_position(camera_player_1_pos)
 			else:
 				player1.update(player1YFac)
@@ -301,11 +353,11 @@ def main():
 			########################
 			if toggleSwitchCameraControl.is_on:
 				# Player 1
-				camera_player_1_pos = get_camera_position() #fraction between 0 and 1
+				camera_player_1_pos = camera.get_paddle_1_target_position() #fraction between 0 and 1
 				player1.update_absolute_position(camera_player_1_pos)
 
 				# Player 2
-				camera_player_2_pos = get_camera_position() #fraction between 0 and 1
+				camera_player_2_pos = camera.get_paddle_2_target_position() #fraction between 0 and 1
 				player2.update_absolute_position(camera_player_2_pos)
 			else:
 				player1.update(player1YFac)
@@ -324,6 +376,10 @@ def main():
 		player1.display()
 		player2.display()
 		ball.display()
+		blinking_cube_left_top.display()
+		blinking_cube_left_buttom.display()
+		blinking_cube_right_top.display()
+		blinking_cube_right_buttom.display()
 
 		# Drawing the ui elements
 		#buttonUp.draw(screen, outline=True)
