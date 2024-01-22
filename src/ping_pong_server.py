@@ -3,7 +3,9 @@ import numpy as np
 import socket
 import threading
 
-values = {1: 0.5, 2: 0.5}
+
+# values for the vertical (y) position  of thee paddle in  percent  (0-1)
+socket_paddle_position = {1: 0.5, 2: 0.5}
 
 def client_thread(conn):
     while True:
@@ -15,7 +17,7 @@ def client_thread(conn):
         player = int(player)
         value = float(value)
         print(">", player, value)
-        values[player] = value
+        socket_paddle_position[player] = value
     conn.close()
 
 def start_server():
@@ -31,7 +33,7 @@ def start_server():
 
 
 def get_paddle_position(player):
-    return values[player]
+    return socket_paddle_position[player]
 
 
 pygame.init()
