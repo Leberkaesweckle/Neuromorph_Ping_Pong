@@ -1,7 +1,7 @@
 # Neuromorphic Ping Pong
 Ping pong game played with LEDs tracked by a neuromorphic camera.
 
-![](docs/banner.JPG)
+![](assets/banner.JPG)
 
 
 ## Setup
